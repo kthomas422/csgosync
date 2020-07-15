@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -48,6 +49,9 @@ func SendServerHashes(uri string, body models.ClientFileHashMap) (*models.FileRe
 	err = json.NewDecoder(resp.Body).Decode(filesResp)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return filesResp, errors.New("bad http status")
 	}
 	return filesResp, nil
 }

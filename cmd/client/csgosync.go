@@ -13,18 +13,16 @@ package main
 import (
 	"log"
 
-	"github.com/kthomas422/csgosync/internal/httpclient"
-
-	"github.com/kthomas422/csgosync/internal/filelist"
-	"github.com/kthomas422/csgosync/internal/models"
-
 	"github.com/kthomas422/csgosync/internal/auth"
+	"github.com/kthomas422/csgosync/internal/filelist"
+	"github.com/kthomas422/csgosync/internal/httpclient"
+	"github.com/kthomas422/csgosync/internal/models"
 	"github.com/kthomas422/csgosync/internal/myconst"
 )
 
 func main() {
 	var (
-		files models.ClientFileHashMap
+		files models.FileHashMap
 	)
 	log.Println("csgo sync client")
 	err := auth.GetUserCreds()
@@ -36,8 +34,5 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to get files list from server", err)
 	}
-	if resp.Status != 200 {
-		log.Fatal("invalid response from server")
-	}
-	httpclient.DownloadFiles(auth.Uri(), resp.FileMap)
+	httpclient.DownloadFiles(auth.Uri(), resp.Files)
 }
