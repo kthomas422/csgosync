@@ -25,16 +25,17 @@ import (
 
 // TODO: add port config via command line
 // TODO: config file? (for paths, port and password?)
+// TODO: add custom logging package
 func main() {
 	log.Println("csgo sync server")
 	files, err := filelist.GenerateMap(constants.ServerMapDir)
 	if err != nil {
-		log.Fatal("couldn't load server maps", err)
+		log.Fatal("couldn't load server maps: ", err)
 	}
 
 	err = auth.GetPass()
 	if err != nil {
-		log.Fatal("failed to get password", err)
+		log.Fatal("failed to get password: ", err)
 	}
 
 	http.Handle("/maps", http.FileServer(http.Dir(constants.ServerMapDir)))
@@ -109,5 +110,6 @@ func main() {
 		}
 	})
 
+	log.Println("Serving on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
