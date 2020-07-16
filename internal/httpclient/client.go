@@ -1,3 +1,13 @@
+// Copyright 2020 Kyle Thomas. All rights reserved.
+
+/*
+	File:		csgosync/internal/httpclient/client.go
+	Language:	Go 1.14
+	Dev Env:	Linux 5.7
+
+	This file contains the structs and methods for the http client for the csgo sync application.
+*/
+
 package httpclient
 
 import (
@@ -30,7 +40,7 @@ func init() {
 	}
 }
 
-func SendServerHashes(uri string, body models.ClientFileHashMap) (*models.FileResponse, error) {
+func SendServerHashes(uri, pass string, body models.FileHashMap) (*models.FileResponse, error) {
 	var filesResp = new(models.FileResponse)
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
@@ -41,6 +51,7 @@ func SendServerHashes(uri string, body models.ClientFileHashMap) (*models.FileRe
 		return nil, err
 	}
 
+	req.Header.Add("pass", pass)
 	resp, err := httpClient.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -56,7 +67,7 @@ func SendServerHashes(uri string, body models.ClientFileHashMap) (*models.FileRe
 	return filesResp, nil
 }
 
-func DownloadFiles(uri string, files []string) {
+func DownloadFiles(uri, pass string, files []string) {
 	var (
 		wg            sync.WaitGroup
 		webSemaphore  = make(chan struct{}, maxConcurrentDownloads)

@@ -1,3 +1,13 @@
+// Copyright 2020 Kyle Thomas. All rights reserved.
+
+/*
+	File:		csgosync/internal/filelist/filelist_test.go
+	Language:	Go 1.14
+	Dev Env:	Linux 5.7
+
+	This file contains the functions for testing the fileslist module for the csgo sync application.
+*/
+
 package filelist
 
 import "testing"

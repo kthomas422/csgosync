@@ -1,3 +1,13 @@
+// Copyright 2020 Kyle Thomas. All rights reserved.
+
+/*
+	File:		csgosync/internal/filelist/filelist.go
+	Language:	Go 1.14
+	Dev Env:	Linux 5.7
+
+	This file contains the methods for file listing/hashing for the csgo sync application.
+*/
+
 package filelist
 
 import (

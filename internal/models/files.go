@@ -1,3 +1,13 @@
+// Copyright 2020 Kyle Thomas. All rights reserved.
+
+/*
+	File:		csgosync/internal/models/files.go
+	Language:	Go 1.14
+	Dev Env:	Linux 5.7
+
+	This file contains the json models for the csgo sync application.
+*/
+
 package models
 
 // Response contains the server response code and the list of files that are different

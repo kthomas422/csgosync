@@ -14,10 +14,10 @@ import (
 	"log"
 
 	"github.com/kthomas422/csgosync/internal/auth"
+	"github.com/kthomas422/csgosync/internal/constants"
 	"github.com/kthomas422/csgosync/internal/filelist"
 	"github.com/kthomas422/csgosync/internal/httpclient"
 	"github.com/kthomas422/csgosync/internal/models"
-	"github.com/kthomas422/csgosync/internal/myconst"
 )
 
 func main() {
@@ -25,14 +25,20 @@ func main() {
 		files models.FileHashMap
 	)
 	log.Println("csgo sync client")
-	err := auth.GetUserCreds()
+	err := auth.GetUri()
+	if err != nil {
+		log.Fatal("failed to get uri", err)
+	}
+
+	err = auth.GetPass()
 	if err != nil {
 		log.Fatal("failed to get password", err)
 	}
-	files.Files, err = filelist.GenerateMap(myconst.SteamDir)
-	resp, err := httpclient.SendServerHashes(auth.Uri(), files)
+
+	files.Files, err = filelist.GenerateMap(constants.ClientMapDir)
+	resp, err := httpclient.SendServerHashes(auth.Uri(), auth.Password(), files)
 	if err != nil {
 		log.Fatal("failed to get files list from server", err)
 	}
-	httpclient.DownloadFiles(auth.Uri(), resp.Files)
+	httpclient.DownloadFiles(auth.Uri(), auth.Password(), resp.Files)
 }
