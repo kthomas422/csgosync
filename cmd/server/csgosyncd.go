@@ -48,20 +48,17 @@ func main() {
 			remoteFiles models.FileHashMap
 			resp        models.FileResponse
 		)
-		if val, ok := r.Header["pass"]; ok {
-			if val[0] != auth.Password() {
-				w.WriteHeader(http.StatusUnauthorized)
-				_, err = w.Write([]byte("{ \"Message\": \"Unauthorized\"}"))
-				if err != nil {
-					log.Println(err)
-				}
+		log.Println("header: ", r.Header)
+		if pass := r.Header.Get("Pass"); pass != "" {
+			if pass != auth.Password() {
+				log.Println("unauthorized bad pass: ", r.Header.Get("pass"))
+				unAuth(w)
+				return
 			}
-		} else if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, err = w.Write([]byte("{ \"Message\": \"Unauthorized\"}"))
-			if err != nil {
-				log.Println(err)
-			}
+		} else {
+			log.Println("unauthorized no password")
+			unAuth(w)
+			return
 		}
 		defer r.Body.Close()
 		switch r.Method { // switch to make it easier to add more methods later
@@ -79,7 +76,7 @@ func main() {
 			}
 			err = json.Unmarshal(bytes, &remoteFiles)
 			if err != nil {
-				log.Println(err)
+				log.Println("can't unmarshal json ", err)
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				_, err = w.Write([]byte("{ \"Message\": \"Error parsing JSON\"}"))
 				if err != nil {
@@ -92,16 +89,18 @@ func main() {
 
 			jsonBody, err = json.Marshal(resp)
 			if err != nil {
-				log.Println(err)
+				log.Println("can't marshal json ", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				log.Println(w.Write([]byte("{ \"Message\": \"Error creating response\"}")))
 			}
+			log.Println("success!")
 			w.WriteHeader(http.StatusOK)
 			_, err = w.Write(jsonBody)
 			if err != nil {
 				log.Println(err)
 			}
 		default:
+			log.Println("not found")
 			w.WriteHeader(http.StatusNotFound)
 			_, err = w.Write([]byte("{ \"Message\": \"Not found\"}"))
 			if err != nil {
@@ -112,4 +111,12 @@ func main() {
 
 	log.Println("Serving on port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func unAuth(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
+	_, err := w.Write([]byte("{ \"Message\": \"Unauthorized\"}"))
+	if err != nil {
+		log.Println(err)
+	}
 }

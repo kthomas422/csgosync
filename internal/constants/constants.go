@@ -11,6 +11,7 @@
 package constants
 
 const (
-	ClientMapDir = "C:\\ProgramFilesx86\\Steam\\steamapps\\common\\csgo\\maps"
-	ServerMapDir = "~/steamapps" // users will have to make symlink to map folder
+	//ClientMapDir = "C:\\ProgramFilesx86\\Steam\\steamapps\\common\\csgo\\maps"
+	ClientMapDir = "/home/kyle/steamapps2"
+	ServerMapDir = "/home/kyle/steamapps" // users will have to make symlink to map folder
 )

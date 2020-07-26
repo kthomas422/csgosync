@@ -12,6 +12,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/kthomas422/csgosync/internal/auth"
 	"github.com/kthomas422/csgosync/internal/constants"
@@ -35,10 +36,16 @@ func main() {
 		log.Fatal("failed to get password", err)
 	}
 
+	log.Println("Generating file hash map")
 	files.Files, err = filelist.GenerateMap(constants.ClientMapDir)
-	resp, err := httpclient.SendServerHashes(auth.Uri(), auth.Password(), files)
+	log.Println("Sending hashes to server")
+	resp, err := httpclient.SendServerHashes(auth.Uri()+"/csgosync", auth.Password(), files)
 	if err != nil {
-		log.Fatal("failed to get files list from server", err)
+		log.Println("failed to get files list from server ", err)
+		log.Println(resp)
+		os.Exit(1)
 	}
+	log.Println("downloading files")
+	log.Println(resp.Files)
 	httpclient.DownloadFiles(auth.Uri(), auth.Password(), resp.Files)
 }
