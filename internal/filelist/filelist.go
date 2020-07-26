@@ -16,6 +16,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 )
 
 // loadFiles loads the list of files in the directory
@@ -66,7 +67,7 @@ func GenerateMap(dir string) (map[string]string, error) {
 		return nil, err
 	}
 	for i, file := range files {
-		maps[file] = hashes[i]
+		maps[filepath.Base(file)] = hashes[i]
 	}
 	return maps, err
 }

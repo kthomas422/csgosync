@@ -20,7 +20,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
+
+	"github.com/kthomas422/csgosync/internal/constants"
 
 	"github.com/kthomas422/csgosync/internal/concurrency"
 
@@ -95,7 +98,7 @@ func DownloadFiles(uri, pass string, files []string) {
 
 // download the file from the url onto local drive with same name
 func downloadFile(uri, file string, concOH *concurrency.OverHead) {
-	defer concOH.wg.Done() // Signal that download is done
+	defer concOH.Wg.Done() // Signal that download is done
 
 	fmt.Println("inside download file")
 	log.Println("["+uri+"]", "<"+file+">")
@@ -114,7 +117,7 @@ func downloadFile(uri, file string, concOH *concurrency.OverHead) {
 
 	// create file
 	concOH.FileSem <- concurrency.Token{}
-	out, err := os.Create(file)
+	out, err := os.Create(filepath.Join(constants.ClientMapDir, file))
 	if err != nil {
 		log.Println("error creating file:", file)
 		log.Println(err)

@@ -34,6 +34,13 @@ func GetPass() error {
 	return err
 }
 
+func Wait() {
+	_, err := getInput("done, press any key to continue:")
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+}
+
 func getInput(prompt string) (string, error) {
 	var (
 		input string

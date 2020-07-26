@@ -24,8 +24,8 @@ import (
 )
 
 // TODO: add port config via command line
-// TODO: config file? (for paths, port and password?)
-// TODO: add custom logging package
+// TODO: config file (for paths, port and password)
+// TODO: add logging package
 func main() {
 	log.Println("csgo sync server")
 	files, err := filelist.GenerateMap(constants.ServerMapDir)
@@ -38,7 +38,7 @@ func main() {
 		log.Fatal("failed to get password: ", err)
 	}
 
-	http.Handle("/maps", http.FileServer(http.Dir(constants.ServerMapDir)))
+	http.Handle("/maps/", http.StripPrefix("/maps/", http.FileServer(http.Dir(constants.ServerMapDir))))
 
 	http.HandleFunc("/csgosync", func(w http.ResponseWriter, r *http.Request) {
 		var (

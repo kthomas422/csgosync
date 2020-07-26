@@ -48,4 +48,5 @@ func main() {
 	log.Println("downloading files")
 	log.Println(resp.Files)
 	httpclient.DownloadFiles(auth.Uri(), auth.Password(), resp.Files)
+	auth.Wait() // auth package already handles user input, this prevents windturds from closing cmd
 }
