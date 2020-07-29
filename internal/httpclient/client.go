@@ -17,12 +17,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/kthomas422/csgosync/internal/constants"
 
 	"github.com/kthomas422/csgosync/internal/concurrency"
@@ -31,7 +32,7 @@ import (
 )
 
 const (
-	timeOut                = 60
+	timeOut                = 3600 // may take an hour to finish download
 	maxConcurrentDownloads = 64
 	maxOpenFiles           = 64
 )
@@ -54,31 +55,25 @@ func SendServerHashes(uri, pass string, body models.FileHashMap) (*models.FileRe
 	}
 	req, err := http.NewRequest(http.MethodPost, uri, bytes.NewBuffer(jsonBody))
 	if err != nil {
-		log.Println("fail to create new request")
 		return nil, err
 	}
 
 	req.Header.Add("pass", pass)
 	resp, err := httpClient.client.Do(req)
 	if err != nil {
-		log.Println("failed to do request")
 		return nil, err
 	}
 	defer resp.Body.Close()
 	respContents, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("failed to read response")
-		os.Exit(1)
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		log.Println("bad server response ", resp.Status)
-		fmt.Println(string(respContents))
 		return filesResp, errors.New("bad http status")
 	}
 	err = json.Unmarshal(respContents, &filesResp)
 	//err = json.NewDecoder(resp.Body).Decode(&filesResp)
 	if err != nil {
-		log.Println("failed to decode json")
 		return nil, err
 	}
 
@@ -100,15 +95,10 @@ func DownloadFiles(uri, pass string, files []string) {
 func downloadFile(uri, file string, concOH *concurrency.OverHead) {
 	defer concOH.Wg.Done() // Signal that download is done
 
-	fmt.Println("inside download file")
-	log.Println("["+uri+"]", "<"+file+">")
-
 	// get data
 	concOH.HttpSem <- concurrency.Token{} // "take token"
 	resp, err := httpClient.client.Get(uri + "/maps/" + file)
 	if err != nil {
-		log.Println("error downloading file:", uri, file)
-		log.Println(err)
 		<-concOH.HttpSem // release token
 		return
 	}
@@ -117,25 +107,69 @@ func downloadFile(uri, file string, concOH *concurrency.OverHead) {
 
 	// create file
 	concOH.FileSem <- concurrency.Token{}
-	out, err := os.Create(filepath.Join(constants.ClientMapDir, file))
+	out, err := os.Create(filepath.Join(constants.ClientMapDir, file) + ".tmp")
 	if err != nil {
-		log.Println("error creating file:", file)
-		log.Println(err)
 		<-concOH.FileSem // release token
+		fmt.Println("failed to created file: ", file)
 		return
 	}
 	defer out.Close()
 
-	// write contents to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		log.Println("error writing to file:", file)
-		log.Println(err)
+	// 	https://golangcode.com/download-a-file-with-progress/
+	// Create our progress reporter and pass it to be used alongside our writer
+	counter := &WriteCounter{FileName: file}
+	if _, err = io.Copy(out, io.TeeReader(resp.Body, counter)); err != nil {
 		<-concOH.FileSem // release token
+		fmt.Println("failed to write to file")
+		err = out.Close()
+		if err != nil {
+			fmt.Println("failed to close file")
+		}
 		return
 	}
-	<-concOH.FileSem // release token
 
-	log.Println(" - SUCCESS\t", file)
+	// The progress use the same line so print a new line once it's finished downloading
+	fmt.Print("\n")
+
+	// Close the file without defer so it can happen before Rename()
+	err = out.Close()
+	if err != nil {
+		<-concOH.FileSem // release token
+		fmt.Println("failed to close file")
+	}
+
+	// write to tmp file in case it failed... now rename to the "real" name
+	if err = os.Rename(
+		filepath.Join(constants.ClientMapDir, file)+".tmp", filepath.Join(constants.ClientMapDir, file)); err != nil {
+		<-concOH.FileSem // release token
+		fmt.Println("failed to remove tmp file")
+		return
+	}
+
+	<-concOH.FileSem // release token
 	return
+}
+
+// WriteCounter counts the number of bytes written to it. It implements to the io.Writer interface
+// and we can pass this into io.TeeReader() which will report progress on each write cycle.
+type WriteCounter struct {
+	Total    uint64
+	FileName string
+}
+
+func (wc *WriteCounter) Write(p []byte) (int, error) {
+	n := len(p)
+	wc.Total += uint64(n)
+	wc.PrintProgress()
+	return n, nil
+}
+
+func (wc WriteCounter) PrintProgress() {
+	// Clear the line by using a character return to go back to the start and remove
+	// the remaining characters by filling it with spaces
+	fmt.Printf("\r%s", strings.Repeat(" ", 50))
+
+	// Return again and print current status of download
+	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
+	fmt.Printf("\rDownloading %s... %s complete", wc.FileName, humanize.Bytes(wc.Total))
 }

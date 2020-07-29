@@ -11,7 +11,7 @@
 package filelist
 
 import (
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/hex"
 	"errors"
 	"io/ioutil"
@@ -41,8 +41,9 @@ func loadFiles(dir string) (files []string, err error) {
 }
 
 // hashFiles takes a list of files and computes the hashes of the files
+// TODO make parallel
 func hashFiles(files []string) (hashes []string, err error) {
-	hasher := sha256.New()
+	hasher := sha1.New()
 	for _, file := range files {
 		f, err := ioutil.ReadFile(file)
 		if err != nil {

@@ -11,6 +11,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -24,9 +25,10 @@ import (
 func main() {
 	var (
 		files models.FileHashMap
+		err   error
 	)
 	log.Println("csgo sync client")
-	err := auth.GetUri()
+	err = auth.GetUri()
 	if err != nil {
 		log.Fatal("failed to get uri", err)
 	}
@@ -36,17 +38,20 @@ func main() {
 		log.Fatal("failed to get password", err)
 	}
 
-	log.Println("Generating file hash map")
+	fmt.Println("generating hash map...")
 	files.Files, err = filelist.GenerateMap(constants.ClientMapDir)
-	log.Println("Sending hashes to server")
+	fmt.Println("sending hashmap to server")
 	resp, err := httpclient.SendServerHashes(auth.Uri()+"/csgosync", auth.Password(), files)
 	if err != nil {
 		log.Println("failed to get files list from server ", err)
 		log.Println(resp)
 		os.Exit(1)
 	}
-	log.Println("downloading files")
-	log.Println(resp.Files)
-	httpclient.DownloadFiles(auth.Uri(), auth.Password(), resp.Files)
+	if len(resp.Files) != 0 {
+		fmt.Printf("downloading %d files from server...\n", len(resp.Files))
+		httpclient.DownloadFiles(auth.Uri(), auth.Password(), resp.Files)
+	} else {
+		fmt.Println("nothing to do, already have server's maps")
+	}
 	auth.Wait() // auth package already handles user input, this prevents windturds from closing cmd
 }

@@ -24,6 +24,9 @@ var creds struct {
 
 func GetUri() error {
 	uri, err := getInput("please enter the uri:")
+	if !strings.HasPrefix(uri, "http://") {
+		uri = "http://" + uri
+	}
 	creds.uri = uri
 	return err
 }
