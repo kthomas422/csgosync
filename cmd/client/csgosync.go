@@ -15,8 +15,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/kthomas422/csgosync/internal/auth"
-	"github.com/kthomas422/csgosync/internal/constants"
+	"github.com/spf13/viper"
+
+	"github.com/kthomas422/csgosync/config"
+
 	"github.com/kthomas422/csgosync/internal/filelist"
 	"github.com/kthomas422/csgosync/internal/httpclient"
 	"github.com/kthomas422/csgosync/internal/models"
@@ -28,20 +30,37 @@ func main() {
 		err   error
 	)
 	log.Println("csgo sync client")
-	err = auth.GetUri()
+
+	viper.SetConfigFile("csgosync.config")
+	viper.SetConfigType("yaml")
+	viper.AutomaticEnv()
+	err = viper.ReadInConfig()
 	if err != nil {
-		log.Fatal("failed to get uri", err)
+		fmt.Println("failed to read config: ", err)
+		os.Exit(1)
+	}
+	clientConfig := config.InitClientConfig()
+
+	if clientConfig.Uri == "" {
+		err = clientConfig.GetUri()
+		if err != nil {
+			fmt.Println("failed to get uri", err)
+			os.Exit(1)
+		}
 	}
 
-	err = auth.GetPass()
-	if err != nil {
-		log.Fatal("failed to get password", err)
+	if clientConfig.Pass == "" {
+		err = clientConfig.GetPass()
+		if err != nil {
+			fmt.Println("failed to get password", err)
+			os.Exit(1)
+		}
 	}
 
 	fmt.Println("generating hash map...")
-	files.Files, err = filelist.GenerateMap(constants.ClientMapDir)
+	files.Files, err = filelist.GenerateMap(clientConfig.MapPath)
 	fmt.Println("sending hashmap to server")
-	resp, err := httpclient.SendServerHashes(auth.Uri()+"/csgosync", auth.Password(), files)
+	resp, err := httpclient.SendServerHashes(clientConfig.Uri+"/csgosync", clientConfig.Pass, files)
 	if err != nil {
 		log.Println("failed to get files list from server ", err)
 		log.Println(resp)
@@ -49,9 +68,9 @@ func main() {
 	}
 	if len(resp.Files) != 0 {
 		fmt.Printf("downloading %d files from server...\n", len(resp.Files))
-		httpclient.DownloadFiles(auth.Uri(), auth.Password(), resp.Files)
+		httpclient.DownloadFiles(clientConfig.Uri, clientConfig.Pass, clientConfig.MapPath, resp.Files)
 	} else {
 		fmt.Println("nothing to do, already have server's maps")
 	}
-	auth.Wait() // auth package already handles user input, this prevents windturds from closing cmd
+	config.Wait() // config package already handles user input, this prevents windturds from closing cmd
 }

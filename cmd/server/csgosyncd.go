@@ -15,30 +15,44 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/kthomas422/csgosync/config"
+
+	"github.com/spf13/viper"
+
 	"github.com/kthomas422/csgosync/internal/logging"
 
 	"github.com/kthomas422/csgosync/internal/httpserver"
-
-	"github.com/kthomas422/csgosync/internal/auth"
-
-	"github.com/kthomas422/csgosync/internal/constants"
 )
 
-// TODO: config file (for paths, port and password)
 // TODO: create "custom" http server with timeouts
 func main() {
 	var cs httpserver.CsgoSync
 	cs.L = logging.Init(logging.DebugLvl, os.Stderr)
 	cs.L.Info("Map Sync Server")
-
-	err := auth.GetPass()
+	viper.SetConfigFile("csgosyncd.config")
+	viper.SetConfigType("yaml")
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
 	if err != nil {
-		cs.L.Err("failed to get password: ", err)
+		cs.L.Err("failed to get config file: ", err)
 		os.Exit(1)
+	}
+	cs.C = config.InitServerConfig()
+
+	if cs.C.Pass == "" {
+		err = cs.C.GetPass()
+		if err != nil {
+			cs.L.Err("failed to get password: ", err)
+			os.Exit(1)
+		}
+	}
+	if cs.C.Port == "" {
+		cs.L.Info("empty port number, defaulting to 8080")
+		cs.C.Port = "8080"
 	}
 
 	http.Handle("/maps/", http.StripPrefix(
-		"/maps/", http.FileServer(http.Dir(constants.ServerMapDir))))
+		"/maps/", http.FileServer(http.Dir(cs.C.MapPath))))
 	http.Handle("/csgosync", &cs)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ip := httpserver.GetRequestIp(r)
@@ -51,6 +65,6 @@ func main() {
 
 	})
 
-	cs.L.Info("Serving on port 8080")
-	cs.L.Err(http.ListenAndServe(":8080", nil))
+	cs.L.Info("Serving on port ", cs.C.Port)
+	cs.L.Err(http.ListenAndServe(":"+cs.C.Port, nil))
 }

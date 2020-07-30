@@ -7,16 +7,17 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/kthomas422/csgosync/config"
+
 	"github.com/kthomas422/csgosync/internal/logging"
 
-	"github.com/kthomas422/csgosync/internal/auth"
-	"github.com/kthomas422/csgosync/internal/constants"
 	"github.com/kthomas422/csgosync/internal/filelist"
 	"github.com/kthomas422/csgosync/internal/models"
 )
 
 type CsgoSync struct {
 	L *logging.Log
+	C *config.ServerConfig
 }
 
 func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +30,7 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp        models.FileResponse
 		ip          = GetRequestIp(r)
 	)
-	files, err = filelist.GenerateMap(constants.ServerMapDir)
+	files, err = filelist.GenerateMap(cs.C.MapPath)
 	if err != nil {
 		cs.L.Err("couldn't load server maps: ", err)
 		cs.L.Info(fmt.Sprintf("ip: %v | couldn't load server maps", ip))
@@ -42,7 +43,7 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	cs.L.Debug("header: ", r.Header)
 	if pass := r.Header.Get("Pass"); pass != "" {
-		if pass != auth.Password() {
+		if pass != cs.C.Pass {
 			cs.L.Info(fmt.Sprintf("ip: %v | unauthorized: bad pass: %s", ip, r.Header.Get("Pass")))
 			err = unAuth(w)
 			if err != nil {

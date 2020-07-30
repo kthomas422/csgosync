@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/kthomas422/csgosync/internal/constants"
 
 	"github.com/kthomas422/csgosync/internal/concurrency"
 
@@ -80,19 +79,20 @@ func SendServerHashes(uri, pass string, body models.FileHashMap) (*models.FileRe
 	return filesResp, nil
 }
 
-func DownloadFiles(uri, pass string, files []string) {
+func DownloadFiles(uri, pass, mapDir string, files []string) {
 	var (
 		concOH = concurrency.InitOH(maxConcurrentDownloads, maxOpenFiles)
 	)
 	for _, file := range files {
 		concOH.Wg.Add(1)
-		go downloadFile(uri, file, concOH)
+		go downloadFile(uri, file, mapDir, concOH)
 	}
 	concOH.Wg.Wait()
 }
 
 // download the file from the url onto local drive with same name
-func downloadFile(uri, file string, concOH *concurrency.OverHead) {
+func downloadFile(uri, file, mapDir string, concOH *concurrency.OverHead) {
+	var counter *WriteCounter
 	defer concOH.Wg.Done() // Signal that download is done
 
 	// get data
@@ -107,7 +107,7 @@ func downloadFile(uri, file string, concOH *concurrency.OverHead) {
 
 	// create file
 	concOH.FileSem <- concurrency.Token{}
-	out, err := os.Create(filepath.Join(constants.ClientMapDir, file) + ".tmp")
+	out, err := os.Create(filepath.Join(mapDir, file) + ".tmp")
 	if err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to created file: ", file)
@@ -117,7 +117,11 @@ func downloadFile(uri, file string, concOH *concurrency.OverHead) {
 
 	// 	https://golangcode.com/download-a-file-with-progress/
 	// Create our progress reporter and pass it to be used alongside our writer
-	counter := &WriteCounter{FileName: file}
+	if len(file) > 16 {
+		counter = &WriteCounter{FileName: file[:16]} // truncate file name to 16 chars
+	} else {
+		counter = &WriteCounter{FileName: file} // truncate file name to 16 chars
+	}
 	if _, err = io.Copy(out, io.TeeReader(resp.Body, counter)); err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to write to file")
@@ -140,7 +144,7 @@ func downloadFile(uri, file string, concOH *concurrency.OverHead) {
 
 	// write to tmp file in case it failed... now rename to the "real" name
 	if err = os.Rename(
-		filepath.Join(constants.ClientMapDir, file)+".tmp", filepath.Join(constants.ClientMapDir, file)); err != nil {
+		filepath.Join(mapDir, file)+".tmp", filepath.Join(mapDir, file)); err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to remove tmp file")
 		return
@@ -164,12 +168,13 @@ func (wc *WriteCounter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// TODO: bug where filenames don't really match progress bar
 func (wc WriteCounter) PrintProgress() {
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
-	fmt.Printf("\r%s", strings.Repeat(" ", 50))
+	fmt.Printf("\r%s", strings.Repeat(" ", 80))
 
 	// Return again and print current status of download
 	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
-	fmt.Printf("\rDownloading %s... %s complete", wc.FileName, humanize.Bytes(wc.Total))
+	fmt.Printf("\rDownloading %s %s complete", wc.FileName, humanize.Bytes(wc.Total))
 }

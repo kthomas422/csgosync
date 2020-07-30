@@ -14,9 +14,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"sync"
 )
 
 // loadFiles loads the list of files in the directory
@@ -41,18 +43,36 @@ func loadFiles(dir string) (files []string, err error) {
 }
 
 // hashFiles takes a list of files and computes the hashes of the files
-// TODO make parallel
 func hashFiles(files []string) (hashes []string, err error) {
-	hasher := sha1.New()
-	for _, file := range files {
-		f, err := ioutil.ReadFile(file)
-		if err != nil {
-			return nil, err
+	var (
+		wg        = new(sync.WaitGroup)
+		mux       = new(sync.Mutex)
+		fileChunk = 50 // files to hash per thread
+	)
+	for len(files) > 0 {
+		wg.Add(1)
+		if len(files) < fileChunk {
+			fileChunk = len(files)
 		}
-		hasher.Write(f)
-		hashes = append(hashes, hex.EncodeToString(hasher.Sum(nil)))
-		hasher.Reset()
+		go func(files []string) {
+			defer wg.Done()
+			hasher := sha1.New()
+			for _, file := range files {
+				f, err := ioutil.ReadFile(file)
+				if err != nil {
+					fmt.Printf("error: skipping file %s\n%s\n", file, err)
+					continue // ignoring error
+				}
+				hasher.Write(f)
+				mux.Lock()
+				hashes = append(hashes, hex.EncodeToString(hasher.Sum(nil)))
+				mux.Unlock()
+				hasher.Reset()
+			}
+		}(files[:fileChunk])
+		files = files[fileChunk:]
 	}
+	wg.Wait()
 	return hashes, nil
 }
 
@@ -60,6 +80,9 @@ func hashFiles(files []string) (hashes []string, err error) {
 func GenerateMap(dir string) (map[string]string, error) {
 	maps := make(map[string]string)
 	files, err := loadFiles(dir)
+	if len(files) == 0 {
+		return maps, nil // return empty map since no files
+	}
 	if err != nil {
 		return nil, err
 	}
