@@ -16,6 +16,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kthomas422/csgosync/internal/logging"
+
 	"github.com/spf13/viper"
 )
 
@@ -25,7 +27,9 @@ type baseConfig struct {
 }
 
 type ServerConfig struct {
-	Port string
+	Port    string
+	LogFile string
+	LogLvl  logging.Level
 	*baseConfig
 }
 
@@ -44,6 +48,8 @@ func initConfig() *baseConfig {
 func InitServerConfig() *ServerConfig {
 	return &ServerConfig{
 		viper.GetString("PORT"),
+		viper.GetString("LOG_FILE"),
+		logging.Level(viper.GetInt("LOG_LEVEL")),
 		initConfig(),
 	}
 }

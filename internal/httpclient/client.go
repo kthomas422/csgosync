@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	timeOut                = 3600 // may take an hour to finish download
+	timeOut                = 3600 // 1 hour to finish downloads, may need to increase?
 	maxConcurrentDownloads = 64
 	maxOpenFiles           = 64
 )

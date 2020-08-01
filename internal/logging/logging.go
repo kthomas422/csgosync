@@ -13,6 +13,8 @@ package logging
 import (
 	"io"
 	"log"
+	"os"
+	"strings"
 )
 
 type Level int
@@ -31,7 +33,7 @@ type Log struct {
 	debug   *log.Logger
 }
 
-func Init(lvl Level, logFile io.Writer) *Log {
+func Init(lvl Level, logFile io.WriteCloser) *Log {
 	return &Log{
 		lvl:     lvl,
 		logFile: logFile,
@@ -63,5 +65,16 @@ func (l *Log) doLog(lvl Level, msg ...interface{}) {
 		case DebugLvl:
 			l.debug.Println(msg...)
 		}
+	}
+}
+
+func OpenLogFile(fileName string) (io.WriteCloser, error) {
+	switch strings.ToLower(fileName) {
+	case "stderr", "":
+		return os.Stderr, nil
+	case "stdout":
+		return os.Stdout, nil
+	default:
+		return os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	}
 }

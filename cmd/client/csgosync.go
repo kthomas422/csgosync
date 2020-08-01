@@ -31,7 +31,7 @@ func main() {
 	)
 	log.Println("csgo sync client")
 
-	viper.SetConfigFile("csgosync.config")
+	viper.SetConfigFile("csgosync.yaml")
 	viper.SetConfigType("yaml")
 	viper.AutomaticEnv()
 	err = viper.ReadInConfig()

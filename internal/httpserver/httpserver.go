@@ -13,6 +13,7 @@ package httpserver
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,8 +27,9 @@ import (
 )
 
 type CsgoSync struct {
-	L *logging.Log
-	C *config.ServerConfig
+	L       *logging.Log
+	C       *config.ServerConfig
+	LogFile io.WriteCloser
 }
 
 func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {

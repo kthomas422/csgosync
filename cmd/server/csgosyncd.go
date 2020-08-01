@@ -1,7 +1,7 @@
 // Copyright 2020 Kyle Thomas. All rights reserved.
 
 /*
-	File:		csgosync/cmd/server/csgosyncd.go
+	File:	csgosync/cmd/server/csgosyncd.go
 	Language:	Go 1.14
 	Dev Env:	Linux 5.7
 
@@ -12,14 +12,15 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
+
+	"github.com/kthomas422/csgosync/internal/logging"
 
 	"github.com/kthomas422/csgosync/config"
 
 	"github.com/spf13/viper"
-
-	"github.com/kthomas422/csgosync/internal/logging"
 
 	"github.com/kthomas422/csgosync/internal/httpserver"
 )
@@ -27,17 +28,34 @@ import (
 // TODO: create "custom" http server with timeouts
 func main() {
 	var cs httpserver.CsgoSync
-	cs.L = logging.Init(logging.DebugLvl, os.Stderr)
-	cs.L.Info("Map Sync Server")
-	viper.SetConfigFile("csgosyncd.config")
+
+	// load config
+	viper.SetConfigFile("csgosyncd.yaml")
 	viper.SetConfigType("yaml")
 	viper.AutomaticEnv()
+	viper.SetDefault("LOG_LEVEL", logging.InfoLvl)
+	viper.SetDefault("LOG_FILE", "stderr")
 	err := viper.ReadInConfig()
 	if err != nil {
 		cs.L.Err("failed to get config file: ", err)
 		os.Exit(1)
 	}
 	cs.C = config.InitServerConfig()
+
+	// init logger
+	cs.LogFile, err = logging.OpenLogFile(cs.C.LogFile)
+	if err != nil {
+		cs.LogFile = os.Stderr
+	}
+	cs.L = logging.Init(cs.C.LogLvl, cs.LogFile)
+	cs.L.Info("Map Sync Server")
+	defer func() {
+		if cs.LogFile != os.Stdout || cs.LogFile != os.Stderr {
+			if err := cs.LogFile.Close(); err != nil {
+				log.Println("failed to close log file: ", err)
+			}
+		}
+	}()
 
 	if cs.C.Pass == "" {
 		err = cs.C.GetPass()
@@ -51,9 +69,15 @@ func main() {
 		cs.C.Port = "8080"
 	}
 
+	// Handler for serving map files
+	// TODO add auth to file server
 	http.Handle("/maps/", http.StripPrefix(
 		"/maps/", http.FileServer(http.Dir(cs.C.MapPath))))
+
+	// Handler for map hashes
 	http.Handle("/csgosync", &cs)
+
+	// Catchall handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		ip := httpserver.GetRequestIp(r)
 		cs.L.Info(fmt.Sprintf("ip: %v | hit non-existent endpoint: %s", ip, r.URL.String()))
