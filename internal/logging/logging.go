@@ -1,3 +1,13 @@
+// Copyright 2020 Kyle Thomas. All rights reserved.
+
+/*
+	File:		csgosync/internal/logging/logging.go
+	Language:	Go 1.14
+	Dev Env:	Linux 5.7
+
+	This file contains a logger for the csgo sync application.
+*/
+
 package logging
 
 import (

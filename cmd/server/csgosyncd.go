@@ -3,7 +3,7 @@
 /*
 	File:		csgosync/cmd/server/csgosyncd.go
 	Language:	Go 1.14
-	Dev Env:	Linux 5.7y
+	Dev Env:	Linux 5.7
 
 	This file creates the server binary for the csgo sync application.
 */

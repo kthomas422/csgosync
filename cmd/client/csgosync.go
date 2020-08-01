@@ -37,6 +37,7 @@ func main() {
 	err = viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("failed to read config: ", err)
+		config.Wait()
 		os.Exit(1)
 	}
 	clientConfig := config.InitClientConfig()
@@ -45,6 +46,7 @@ func main() {
 		err = clientConfig.GetUri()
 		if err != nil {
 			fmt.Println("failed to get uri", err)
+			config.Wait()
 			os.Exit(1)
 		}
 	}
@@ -53,6 +55,7 @@ func main() {
 		err = clientConfig.GetPass()
 		if err != nil {
 			fmt.Println("failed to get password", err)
+			config.Wait()
 			os.Exit(1)
 		}
 	}
@@ -62,8 +65,9 @@ func main() {
 	fmt.Println("sending hashmap to server")
 	resp, err := httpclient.SendServerHashes(clientConfig.Uri+"/csgosync", clientConfig.Pass, files)
 	if err != nil {
-		log.Println("failed to get files list from server ", err)
-		log.Println(resp)
+		fmt.Println("failed to get files list from server ", err)
+		fmt.Println(resp)
+		config.Wait()
 		os.Exit(1)
 	}
 	if len(resp.Files) != 0 {
