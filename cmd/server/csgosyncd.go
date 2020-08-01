@@ -26,7 +26,6 @@ import (
 	"github.com/kthomas422/csgosync/internal/httpserver"
 )
 
-// TODO: create "custom" http server with timeouts
 func main() {
 	var cs httpserver.CsgoSync
 	fmt.Println("CSGO Sync Server!")
