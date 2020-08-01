@@ -11,6 +11,7 @@
 package logging
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -26,20 +27,21 @@ const (
 )
 
 type Log struct {
-	lvl     Level
-	logFile io.Writer
-	err     *log.Logger
-	info    *log.Logger
-	debug   *log.Logger
+	lvl   Level
+	err   *log.Logger
+	info  *log.Logger
+	debug *log.Logger
 }
 
 func Init(lvl Level, logFile io.WriteCloser) *Log {
+	if lvl == ErrLvl { // level has to be at least 1 or "info"
+		lvl = InfoLvl
+	}
 	return &Log{
-		lvl:     lvl,
-		logFile: logFile,
-		err:     log.New(logFile, "[ERROR]: ", log.LstdFlags),
-		info:    log.New(logFile, "[INFO]:  ", log.LstdFlags),
-		debug:   log.New(logFile, "[DEBUG]: ", log.LstdFlags),
+		lvl:   lvl,
+		err:   log.New(logFile, "[ERROR]: ", log.LstdFlags),
+		info:  log.New(logFile, "[INFO]:  ", log.LstdFlags),
+		debug: log.New(logFile, "[DEBUG]: ", log.LstdFlags),
 	}
 }
 
@@ -64,6 +66,8 @@ func (l *Log) doLog(lvl Level, msg ...interface{}) {
 			l.info.Println(msg...)
 		case DebugLvl:
 			l.debug.Println(msg...)
+		default:
+			fmt.Println("no message!")
 		}
 	}
 }

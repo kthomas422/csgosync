@@ -3,7 +3,7 @@ MAP_PATH: "/home/ubuntu/steamcmd/csgo/csgo/maps"
 PORT: "8080"
 
 # valid options are "stderr" "stdout" or a path to a file
-LOG_FILE: "stderr"
+LOG_FILE: "csgosyncd.log"
 
 # Uncomment for more verbose output
 #LOG_LEVEL: "debug"

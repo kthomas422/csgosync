@@ -43,6 +43,7 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ip          = GetRequestIp(r)
 	)
 	files, err = filelist.GenerateMap(cs.C.MapPath)
+	cs.L.Debug(fmt.Sprintf("files list: %#v", files))
 	if err != nil {
 		cs.L.Err("couldn't load server maps: ", err)
 		cs.L.Info(fmt.Sprintf("ip: %v | couldn't load server maps", ip))

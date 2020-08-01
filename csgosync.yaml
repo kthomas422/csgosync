@@ -1,3 +1,3 @@
-PASSWORD: "super-secrete-password"
-MAP_PATH: "C:\Program Files\Steam\SteamApps\common\Counter-Strike Global Offensive\csgo\maps"
+PASSWORD: "super-secret-password"
+MAP_PATH: "C:\\Program Files\\Steam\\SteamApps\\common\\Counter-Strike Global Offensive\\csgo\\maps"
 URI: "localhost:8080"

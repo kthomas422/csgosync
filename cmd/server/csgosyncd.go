@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/kthomas422/csgosync/internal/logging"
 
@@ -28,13 +29,12 @@ import (
 // TODO: create "custom" http server with timeouts
 func main() {
 	var cs httpserver.CsgoSync
+	fmt.Println("CSGO Sync Server!")
 
 	// load config
 	viper.SetConfigFile("csgosyncd.yaml")
 	viper.SetConfigType("yaml")
 	viper.AutomaticEnv()
-	viper.SetDefault("LOG_LEVEL", logging.InfoLvl)
-	viper.SetDefault("LOG_FILE", "stderr")
 	err := viper.ReadInConfig()
 	if err != nil {
 		cs.L.Err("failed to get config file: ", err)
@@ -69,6 +69,8 @@ func main() {
 		cs.C.Port = "8080"
 	}
 
+	cs.L.Debug(fmt.Sprintf("server config: %#v", cs.C))
+
 	// Handler for serving map files
 	// TODO add auth to file server
 	http.Handle("/maps/", http.StripPrefix(
@@ -90,5 +92,16 @@ func main() {
 	})
 
 	cs.L.Info("Serving on port ", cs.C.Port)
-	cs.L.Err(http.ListenAndServe(":"+cs.C.Port, nil))
+	s := http.Server{
+		ReadTimeout:       time.Second * 10,
+		ReadHeaderTimeout: time.Second * 10,
+		WriteTimeout:      time.Minute * 10, // hopefully files don't take longer than 10 minutes to download
+		IdleTimeout:       time.Second * 30,
+		Addr:              ":" + cs.C.Port,
+	}
+	cs.L.Debug(fmt.Sprintf("ReadTimeout: %d", s.ReadTimeout))
+	cs.L.Debug(fmt.Sprintf("ReadHeaderTimeout: %d", s.ReadHeaderTimeout))
+	cs.L.Debug(fmt.Sprintf("WriteTimeout: %d", s.WriteTimeout))
+	cs.L.Debug(fmt.Sprintf("IdleTimeout: %d", s.IdleTimeout))
+	cs.L.Err(s.ListenAndServe())
 }
