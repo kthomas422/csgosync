@@ -14,20 +14,20 @@ import "testing"
 
 var (
 	testFiles = []string{
-		"test/t1.txt",
-		"test/t2.txt",
-		"test/t3.txt",
+		"../../test/t1.txt",
+		"../../test/t2.txt",
+		"../../test/t3.txt",
 	}
 
 	testHashes = []string{
-		"a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
-		"d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-		"d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5",
+		"22596363b3de40b06f981fb85d82312e8c0ed511",
+		"648a6a6ffffdaa0badb23b8baf90b6168dd16b3a",
+		"09fac8dbfd27bd9b4d23a00eb648aa751789536d",
 	}
 )
 
 func TestLoadFiles(t *testing.T) {
-	files, err := loadFiles("test")
+	files, err := loadFiles("../../test")
 	if len(files) != len(testFiles) {
 		t.Fatal("Length of files doesn't match, got: ", len(files), " wanted: ", len(testFiles))
 	}

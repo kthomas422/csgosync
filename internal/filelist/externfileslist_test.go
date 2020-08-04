@@ -18,27 +18,27 @@ import (
 
 var (
 	testFiles = []string{
-		"test/t1.txt",
-		"test/t2.txt",
-		"test/t3.txt",
+		"../../test/t1.txt",
+		"../../test/t2.txt",
+		"../../test/t3.txt",
 	}
 
 	testHashes = []string{
-		"a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
-		"d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-		"d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5",
+		"22596363b3de40b06f981fb85d82312e8c0ed511",
+		"648a6a6ffffdaa0badb23b8baf90b6168dd16b3a",
+		"09fac8dbfd27bd9b4d23a00eb648aa751789536d",
 	}
 	testMap = map[string]string{
-		"test/t1.txt": "a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
-		"test/t2.txt": "d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
-		"test/t3.txt": "d9014c4624844aa5bac314773d6b689ad467fa4e1d1a50a1b8a99d5a95f72ff5",
+		"t1.txt": "22596363b3de40b06f981fb85d82312e8c0ed511",
+		"t2.txt": "648a6a6ffffdaa0badb23b8baf90b6168dd16b3a",
+		"t3.txt": "09fac8dbfd27bd9b4d23a00eb648aa751789536d",
 	}
 	clientMap = map[string]string{
-		"test/t1.txt": "a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
-		"test/t2.txt": "d2a84f4b8b650937ec8f73cd8be2c74add5a911ba64df27458ed8229da804a26",
+		"t1.txt": "22596363b3de40b06f981fb85d82312e8c0ed511",
+		"t2.txt": "648a6a6ffffdaa0badb23b8baf90b6168dd16b3a",
 	}
 	deltaMap = []string{
-		"test/t3.txt",
+		"t3.txt",
 	}
 )
 
