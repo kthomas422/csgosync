@@ -4,4 +4,7 @@ csgosync
 csgosyncd
 csgosync.exe
 csgosyncd.exe
-
+csgosync.yaml
+csgosyncd.yaml
+*.tgz
+*.zip

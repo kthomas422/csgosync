@@ -17,6 +17,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/kthomas422/csgosync/internal/filelist"
+
 	"github.com/kthomas422/csgosync/internal/logging"
 
 	"github.com/kthomas422/csgosync/config"
@@ -67,6 +69,21 @@ func main() {
 		cs.L.Info("empty port number, defaulting to 8080")
 		cs.C.Port = "8080"
 	}
+
+	go func() {
+		cs.L.Info("generating hash map")
+		start := time.Now()
+		cs.HashMap, err = filelist.GenerateMap(cs.C.MapPath)
+		elapsed := time.Since(start)
+		cs.L.Info(fmt.Sprintf("hash map generated in %v", elapsed))
+
+		cs.L.Debug(fmt.Sprintf("files list: %#v", cs.HashMap))
+		if err != nil {
+			cs.L.Err("couldn't load server maps: ", err)
+			return
+		}
+		time.Sleep(time.Hour * 24 * 7) // regenerate hash map every week
+	}()
 
 	cs.L.Debug(fmt.Sprintf("server config: %#v", cs.C))
 

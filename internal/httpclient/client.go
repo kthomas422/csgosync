@@ -20,10 +20,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
-
-	"github.com/dustin/go-humanize"
 
 	"github.com/kthomas422/csgosync/internal/concurrency"
 
@@ -91,8 +88,9 @@ func DownloadFiles(uri, pass, mapDir string, files []string) {
 }
 
 // download the file from the url onto local drive with same name
+// TODO: find a pretty way to print progress bar
+// TODO: cleanup the 10000000 error branches
 func downloadFile(uri, file, mapDir string, concOH *concurrency.OverHead) {
-	var counter *WriteCounter
 	defer concOH.Wg.Done() // Signal that download is done
 
 	// get data
@@ -102,7 +100,6 @@ func downloadFile(uri, file, mapDir string, concOH *concurrency.OverHead) {
 		<-concOH.HttpSem // release token
 		return
 	}
-	defer resp.Body.Close()
 	<-concOH.HttpSem
 
 	// create file
@@ -111,70 +108,50 @@ func downloadFile(uri, file, mapDir string, concOH *concurrency.OverHead) {
 	if err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to created file: ", file)
+		if out != nil {
+			err = out.Close()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 		return
 	}
-	defer out.Close()
 
-	// 	https://golangcode.com/download-a-file-with-progress/
-	// Create our progress reporter and pass it to be used alongside our writer
-	if len(file) > 16 {
-		counter = &WriteCounter{FileName: file[:16]} // truncate file name to 16 chars
-	} else {
-		counter = &WriteCounter{FileName: file} // truncate file name to 16 chars
-	}
-	if _, err = io.Copy(out, io.TeeReader(resp.Body, counter)); err != nil {
+	if _, err = io.Copy(out, resp.Body); err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to write to file")
 		err = out.Close()
 		if err != nil {
 			fmt.Println("failed to close file")
 		}
+		err = out.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
 		return
 	}
+	err = resp.Body.Close()
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	// The progress use the same line so print a new line once it's finished downloading
-	fmt.Print("\n")
-
-	// Close the file without defer so it can happen before Rename()
 	err = out.Close()
 	if err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to close file")
 	}
 
-	// write to tmp file in case it failed... now rename to the "real" name
+	// wrote to tmp file in case it failed... now rename to the "real" name
 	if err = os.Rename(
 		filepath.Join(mapDir, file)+".tmp", filepath.Join(mapDir, file)); err != nil {
 		<-concOH.FileSem // release token
 		fmt.Println("failed to remove tmp file")
 		return
 	}
-
 	<-concOH.FileSem // release token
-	return
-}
-
-// WriteCounter counts the number of bytes written to it. It implements to the io.Writer interface
-// and we can pass this into io.TeeReader() which will report progress on each write cycle.
-type WriteCounter struct {
-	Total    uint64
-	FileName string
-}
-
-func (wc *WriteCounter) Write(p []byte) (int, error) {
-	n := len(p)
-	wc.Total += uint64(n)
-	wc.PrintProgress()
-	return n, nil
-}
-
-// TODO: bug where filenames don't really match progress bar
-func (wc WriteCounter) PrintProgress() {
-	// Clear the line by using a character return to go back to the start and remove
-	// the remaining characters by filling it with spaces
-	fmt.Printf("\r%s", strings.Repeat(" ", 80))
-
-	// Return again and print current status of download
-	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
-	fmt.Printf("\rDownloading %s %s complete", wc.FileName, humanize.Bytes(wc.Total))
+	fmt.Printf("file: %s downloaded\n", file)
 }

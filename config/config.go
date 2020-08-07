@@ -46,10 +46,17 @@ func initConfig() *baseConfig {
 }
 
 func InitServerConfig() *ServerConfig {
+	var lvl logging.Level
+	switch strings.ToLower(viper.GetString("LOG_LEVEL")) {
+	case "debug":
+		lvl = logging.DebugLvl
+	default:
+		lvl = logging.InfoLvl
+	}
 	return &ServerConfig{
 		viper.GetString("PORT"),
 		viper.GetString("LOG_FILE"),
-		logging.Level(viper.GetInt("LOG_LEVEL")),
+		lvl,
 		initConfig(),
 	}
 }
@@ -81,7 +88,7 @@ func (c *baseConfig) GetPass() error {
 }
 
 func Wait() {
-	_, err := getInput("done, press any key to continue")
+	_, err := getInput("done, press \"enter\" to continue")
 	if err != nil {
 		fmt.Println("error: ", err)
 	}

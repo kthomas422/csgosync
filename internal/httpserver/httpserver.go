@@ -30,11 +30,11 @@ type CsgoSync struct {
 	L       *logging.Log
 	C       *config.ServerConfig
 	LogFile io.WriteCloser
+	HashMap map[string]string
 }
 
 func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var (
-		files       map[string]string
 		bytes       []byte
 		jsonBody    []byte
 		err         error
@@ -42,18 +42,7 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp        models.FileResponse
 		ip          = GetRequestIp(r)
 	)
-	files, err = filelist.GenerateMap(cs.C.MapPath)
-	cs.L.Debug(fmt.Sprintf("files list: %#v", files))
-	if err != nil {
-		cs.L.Err("couldn't load server maps: ", err)
-		cs.L.Info(fmt.Sprintf("ip: %v | couldn't load server maps", ip))
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("{ \"Message\": \"Internal Error\"}"))
-		if err != nil {
-			cs.L.Err("failed to write back to client: ", err)
-		}
-		return
-	}
+
 	cs.L.Debug("header: ", r.Header)
 	if pass := r.Header.Get("Pass"); pass != "" {
 		if pass != cs.C.Pass {
@@ -102,7 +91,7 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp.Files = filelist.CompareMaps(files, remoteFiles.Files)
+		resp.Files = filelist.CompareMaps(cs.HashMap, remoteFiles.Files)
 
 		jsonBody, err = json.Marshal(resp)
 		if err != nil {

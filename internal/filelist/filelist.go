@@ -15,8 +15,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -44,32 +46,54 @@ func loadFiles(dir string) (files []string, err error) {
 
 // hashFiles takes a list of files and computes the hashes of the files
 func hashFiles(files []string) (hashes []string, err error) {
+	const bufSize = 16777216 // 16.7MB
 	var (
 		wg        = new(sync.WaitGroup)
 		mux       = new(sync.Mutex)
 		fileChunk = 50 // files to hash per thread
 	)
 	for len(files) > 0 {
-		wg.Add(1)
 		if len(files) < fileChunk {
 			fileChunk = len(files)
 		}
+		wg.Add(1)
+		// TODO send errors to main thread to handle
 		go func(files []string) {
+			var (
+				err error
+				f   *os.File
+			)
 			defer wg.Done()
 			hasher := sha1.New()
 			for _, file := range files {
-				f, err := ioutil.ReadFile(file)
+				f, err = os.Open(file)
 				if err != nil {
+					if f != nil {
+						f.Close()
+					}
 					fmt.Printf("error: skipping file %s\n%s\n", file, err)
-					continue // ignoring error
+					continue
 				}
-				hasher.Write(f)
+				buf := make([]byte, bufSize)
+				for err != io.EOF {
+					_, err = f.Read(buf)
+					if err != nil && err != io.EOF {
+						fmt.Println("error reading file: ", err)
+						continue
+					}
+					hasher.Write(buf)
+				}
+				err = f.Close()
+				if err != nil {
+					fmt.Println("error closing file: ", err)
+				}
 				mux.Lock()
 				hashes = append(hashes, hex.EncodeToString(hasher.Sum(nil)))
 				mux.Unlock()
 				hasher.Reset()
 			}
 		}(files[:fileChunk])
+
 		files = files[fileChunk:]
 	}
 	wg.Wait()
