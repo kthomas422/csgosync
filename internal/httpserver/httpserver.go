@@ -2,8 +2,8 @@
 
 /*
 	File:		csgosync/internal/httpserver/httpserver.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file contains the methods and functions for the http server.
 */
@@ -13,7 +13,6 @@ package httpserver
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -26,11 +25,11 @@ import (
 	"github.com/kthomas422/csgosync/internal/models"
 )
 
+// Wrapper for "things" the handler will need
 type CsgoSync struct {
-	L       *csgolog.CsgoLogger
-	C       *config.ServerConfig
-	LogFile io.WriteCloser
-	HashMap map[string]string
+	L       *csgolog.CsgoLogger  // logger
+	C       *config.ServerConfig // config
+	HashMap map[string]string    // "List" of files and their hashes
 }
 
 func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +41,10 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp        models.FileResponse
 		ip          = GetRequestIp(r)
 	)
-	cs.L.WebRequest(r)
+	cs.L.WebRequest(r) // log request
+
+	// make sure user was "authenticated"
+	// TODO: put this in middlware
 	if pass := r.Header.Get("Pass"); pass != "" {
 		if pass != cs.C.Pass {
 			cs.L.Simple(fmt.Sprintf("unauthorized: bad pass: %s", r.Header.Get("Pass")))
@@ -116,12 +118,14 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cs.L.Simple(fmt.Sprintf("ip: %v successfully sent map delta (%d)", ip, len(resp.Files)))
 }
 
+// Tell the user they're unauthorized and to f off
 func unAuth(w http.ResponseWriter) (err error) {
 	w.WriteHeader(http.StatusUnauthorized)
 	_, err = w.Write([]byte("{ \"Message\": \"Unauthorized\"}"))
 	return
 }
 
+// Grabs the request ip address
 func GetRequestIp(r *http.Request) string {
 	ip := r.Header.Get("X-Forwarded-For")
 	if ip == "" {

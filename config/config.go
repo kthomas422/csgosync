@@ -2,8 +2,8 @@
 
 /*
 	File:		csgosync/cmd/config/config.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file loads configuration for the csgo sync application.
 */
@@ -19,22 +19,26 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Both the client and server will have these values in their config
 type baseConfig struct {
-	Pass    string
-	MapPath string
+	Pass    string // Password for accessing the api
+	MapPath string // Path to where the maps are stored
 }
 
+// Server configuration values
 type ServerConfig struct {
-	Port    string
-	LogFile string
+	Port    string // Port to listen on
+	LogFile string // Where to put logs
 	*baseConfig
 }
 
+// Client configuration values
 type ClientConfig struct {
-	Uri string
+	Uri string // Where the server is located
 	*baseConfig
 }
 
+// Returns a populated baseConfig structure
 func initConfig() *baseConfig {
 	return &baseConfig{
 		Pass:    viper.GetString("PASSWORD"),
@@ -42,6 +46,7 @@ func initConfig() *baseConfig {
 	}
 }
 
+// Returns a populated ServerConfig structure
 func InitServerConfig() *ServerConfig {
 	return &ServerConfig{
 		viper.GetString("PORT"),
@@ -50,6 +55,7 @@ func InitServerConfig() *ServerConfig {
 	}
 }
 
+// Returns a populated ClientConfig structure
 func InitClientConfig() *ClientConfig {
 	c := &ClientConfig{
 		viper.GetString("URI"),
@@ -61,6 +67,7 @@ func InitClientConfig() *ClientConfig {
 	return c
 }
 
+// Prompts the user to enter the URI
 func (c *ClientConfig) GetUri() error {
 	uri, err := getInput("please enter the uri:")
 	if !strings.HasPrefix(uri, "http://") {
@@ -70,12 +77,14 @@ func (c *ClientConfig) GetUri() error {
 	return err
 }
 
+// Prompts the user to enter the password
 func (c *baseConfig) GetPass() error {
 	pass, err := getInput("please enter the password:")
 	c.Pass = pass
 	return err
 }
 
+// Since winturds closes the cmd when it exits "wait" for user so they can read the output.
 func Wait() {
 	_, err := getInput("done, press \"enter\" to continue")
 	if err != nil {
@@ -83,6 +92,7 @@ func Wait() {
 	}
 }
 
+// Displays the prompt to the user and gather's their response
 func getInput(prompt string) (string, error) {
 	var (
 		input string

@@ -2,8 +2,8 @@
 
 /*
 	File:		csgosync/internal/models/files.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file contains the json models for the csgo sync application.
 */

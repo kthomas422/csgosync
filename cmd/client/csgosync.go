@@ -2,8 +2,8 @@
 
 /*
 	File:		csgosync/cmd/client/csgosync.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file creates the client binary for the csgo sync application.
 */
@@ -12,7 +12,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/spf13/viper"
@@ -29,11 +28,13 @@ func main() {
 		files models.FileHashMap
 		err   error
 	)
-	log.Println("csgo sync client")
+	fmt.Println("csgo sync client")
 
+	// Read in config
 	viper.SetConfigFile("csgosync.yaml")
 	viper.SetConfigType("yaml")
 	viper.AutomaticEnv()
+	// TODO: don't crash and burn on missing file... try from env to be 12 factor
 	err = viper.ReadInConfig()
 	if err != nil {
 		fmt.Println("failed to read config: ", err)
@@ -42,6 +43,7 @@ func main() {
 	}
 	clientConfig := config.InitClientConfig()
 
+	// Check certain config params are met
 	if clientConfig.Uri == "" {
 		err = clientConfig.GetUri()
 		if err != nil {
@@ -60,6 +62,7 @@ func main() {
 		}
 	}
 
+	// Create the hash map of our files and send to server
 	fmt.Println("generating hash map...")
 	files.Files, err = filelist.GenerateMap(clientConfig.MapPath)
 	fmt.Println("sending hashmap to server")
@@ -70,6 +73,7 @@ func main() {
 		config.Wait()
 		os.Exit(1)
 	}
+	// Download the missing/different files from server (if any)
 	if len(resp.Files) != 0 {
 		fmt.Printf("downloading %d files from server...\n", len(resp.Files))
 		httpclient.DownloadFiles(clientConfig.Uri, clientConfig.Pass, clientConfig.MapPath, resp.Files)

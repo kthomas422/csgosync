@@ -2,8 +2,8 @@
 
 /*
 	File:		csgosync/internal/filelist/externfilelist_test.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file contains the functions for externally testing the fileslist module for the csgo sync application.
 */
@@ -59,7 +59,7 @@ func TestComparemaps(t *testing.T) {
 	if len(delta) != len(deltaMap) {
 		t.Fatal("delta map wrong")
 	}
-	for i, _ := range deltaMap {
+	for i := range deltaMap {
 		if delta[i] != deltaMap[i] {
 			t.Error("filename mismatch")
 		}

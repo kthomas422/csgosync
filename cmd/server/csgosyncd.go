@@ -2,8 +2,8 @@
 
 /*
 	File:	csgosync/cmd/server/csgosyncd.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file creates the server binary for the csgo sync application.
 */
@@ -37,6 +37,7 @@ func main() {
 	viper.SetConfigType("yaml")
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
+	// TODO: don't crash and burn on missing file... try from env to be 12 factor
 	if err != nil {
 		log.Fatal("failed to get config file: ", err)
 	}
@@ -49,12 +50,14 @@ func main() {
 	}
 	cs.L.Simple("CSGO Sync Server!")
 
+	// Make sure we close the log file
 	defer func() {
 		if err := cs.L.Close(); err != nil {
 			log.Printf("error closing log file: %v\n", err)
 		}
 	}()
 
+	// Verify required config values are present
 	if cs.C.Pass == "" {
 		cs.L.Err("failed to get password: ", err)
 		os.Exit(1)
@@ -68,6 +71,8 @@ func main() {
 		log.Fatalf("could not write to logger: %v", err)
 	}
 
+	// Generate hash map (and regenerate every so often)
+	// Timing how long it takes to get the map as well
 	go func() {
 		for {
 			cs.L.Simple("generating hash map")
@@ -75,11 +80,10 @@ func main() {
 			cs.HashMap, err = filelist.GenerateMap(cs.C.MapPath)
 			elapsed := time.Since(start)
 			cs.L.Simple(fmt.Sprintf("hash map generated in %v", elapsed))
-
-			cs.L.Simple(fmt.Sprintf("files list: %v", cs.HashMap))
 			if err != nil {
 				cs.L.Err("couldn't load server maps: ", err)
 			}
+			cs.L.Simple(fmt.Sprintf("files list: %v", cs.HashMap))
 			time.Sleep(time.Hour * 24 * 7) // regenerate hash map every week TODO: set this as config
 		}
 	}()
@@ -102,6 +106,7 @@ func main() {
 		}
 	})
 
+	// Create web server and run it
 	s := http.Server{
 		ReadTimeout:       time.Second * 10,
 		ReadHeaderTimeout: time.Second * 10,

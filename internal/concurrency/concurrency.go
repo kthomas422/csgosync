@@ -2,8 +2,8 @@
 
 /*
 	File:		csgosync/internal/concurrency/concurrency.go
-	Language:	Go 1.14
-	Dev Env:	Linux 5.7
+	Language:	Go 1.15
+	Dev Env:	Linux 5.9
 
 	This file contains concurrency overhead structs and methods for the csgo sync application.
 */
@@ -12,19 +12,22 @@ package concurrency
 
 import "sync"
 
+// Token and Semaphore is how the number of threads hashing the files and making http requests will be limited later
 type Token struct{}
 type Semaphore chan Token
 
+// Wrapper for the concurrency "primitives"
 type OverHead struct {
-	Wg      *sync.WaitGroup
-	HttpSem Semaphore
-	FileSem Semaphore
+	Wg      *sync.WaitGroup // waitgroup is for keeping track of threads spawned
+	HttpSem Semaphore       // HttpSem is a semaphore for limiting the number of http requests sent at once
+	FileSem Semaphore       // FileSem is a sempaphore for limiting the number of files opened at once
 }
 
+// InitOH returns the initialized concurrency wrapper
 func InitOH(maxHttp, maxFile int) *OverHead {
-	oh := new(OverHead)
-	oh.Wg = new(sync.WaitGroup)
-	oh.FileSem = make(Semaphore, maxFile)
-	oh.HttpSem = make(Semaphore, maxHttp)
-	return oh
+	return &OverHead{
+		Wg:      new(sync.WaitGroup),
+		FileSem: make(Semaphore, maxFile),
+		HttpSem: make(Semaphore, maxHttp),
+	}
 }
