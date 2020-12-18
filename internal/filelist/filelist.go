@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 // loadFiles loads the list of files in the directory
@@ -44,86 +43,79 @@ func loadFiles(dir string) (files []string, err error) {
 }
 
 // hashFiles takes a list of files and computes the hashes of the files
-func hashFiles(files []string) (hashes []string, err error) {
+func hashFiles(files []string) ([]string, []error) {
 	const bufSize = 16777216 // 16.7MB
 	var (
-		wg        = new(sync.WaitGroup)
-		mux       = new(sync.Mutex)
-		fileChunk = 50 // files to hash per thread
+		hasher  = sha1.New()
+		hashes  = make([]string, len(files))
+		f       *os.File
+		err     error
+		fileErr error // file specific error
+		errs    []error
 	)
-	for len(files) > 0 {
-		if len(files) < fileChunk {
-			fileChunk = len(files)
-		}
-		wg.Add(1)
-		// TODO send errors to main thread to handle
-		// concurrently hash a chunk of files
-		go func(files []string) {
-			var (
-				err error
-				f   *os.File
-			)
-			defer wg.Done()
-			hasher := sha1.New()
-			// iterate over files in chunk
-			// TODO: this needs a lot of cleaning up
-			for _, file := range files {
-				f, err = os.Open(file)
-				if err != nil {
-					if f != nil {
-						f.Close()
-					}
-					fmt.Printf("error: skipping file %s\n%s\n", file, err)
-					continue
-				}
-				// consume the file in chunks (was way more fun to read the whole file at once but will
-				// fill up the ram on a micro aws instance).
-				buf := make([]byte, bufSize)
-				for err != io.EOF {
-					_, err = f.Read(buf)
-					if err != nil && err != io.EOF {
-						fmt.Println("error reading file: ", err)
-						continue
-					}
-					hasher.Write(buf)
-				}
+	// iterate over files and hash them
+	// TODO: this needs a lot of cleaning up
+	for i, file := range files {
+		f, err = os.Open(file)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to open file: %s: %w", file, err))
+			if f != nil {
 				if err = f.Close(); err != nil {
-					fmt.Println("error closing file: ", err)
+					errs = append(errs, fmt.Errorf("failed to close file: %s, %w", file, err))
 				}
-				// Lock the hashes so another thread can't write to them, write our hashes to it and unlock
-				mux.Lock()
-				hashes = append(hashes, hex.EncodeToString(hasher.Sum(nil)))
-				mux.Unlock()
-				hasher.Reset() // reset the hasher for the next file/hash
 			}
-		}(files[:fileChunk])
+			continue
+		}
 
-		files = files[fileChunk:]
+		// consume the file in chunks (was way more fun to read the whole file at once but will
+		// fill up the ram on a micro aws instance).
+		buf := make([]byte, bufSize)
+		for fileErr != io.EOF {
+			_, fileErr = f.Read(buf)
+			if fileErr != nil && fileErr != io.EOF {
+				errs = append(errs, fmt.Errorf("error reading file: %s: %w", file, fileErr))
+				hasher.Reset()
+				continue
+			}
+			_, err = hasher.Write(buf)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("could not put bytes in hasher: %s: %w", file, err))
+			}
+		}
+		if err = f.Close(); err != nil {
+			errs = append(errs, fmt.Errorf("error closing file: %s: %w ", file, err))
+		}
+		hashes[i] = hex.EncodeToString(hasher.Sum(nil))
+		hasher.Reset() // reset the hasher for the next file
 	}
-	// wait for all the spawned threads to hash their files
-	wg.Wait()
-	return hashes, nil
+
+	return hashes, errs
 }
 
 // GenerateMap makes a map with the list of files from the directory and the file's hash
-func GenerateMap(dir string) (map[string]string, error) {
-	maps := make(map[string]string)
+func GenerateMap(dir string) (map[string]string, []error) {
+	var (
+		maps = make(map[string]string)
+		errs []error
+	)
 	files, err := loadFiles(dir)
 	if len(files) == 0 {
 		return maps, nil // return empty map since no files
 	}
 	if err != nil {
-		return nil, err
+		errs = append(errs, fmt.Errorf("failed to get list of files: %w", err))
+		return nil, errs
 	}
-	hashes, err := hashFiles(files)
-	if err != nil {
-		return nil, err
+	hashes, hashErrs := hashFiles(files)
+	if len(hashErrs) > 0 {
+		errs = append(errs, hashErrs...)
+		return nil, errs
 	}
 	// have a list of file and a list of hashes... cram them into a map
 	for i, file := range files {
 		maps[filepath.Base(file)] = hashes[i]
 	}
-	return maps, err
+	return maps, nil
 }
 
 // Takes in 2 hashmaps and returns a slice of the filenames for the different ones

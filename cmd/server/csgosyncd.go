@@ -74,10 +74,17 @@ func main() {
 	// Generate hash map (and regenerate every so often)
 	// Timing how long it takes to get the map as well
 	go func() {
+		var errs []error
 		for {
 			cs.L.Simple("generating hash map")
 			start := time.Now()
-			cs.HashMap, err = filelist.GenerateMap(cs.C.MapPath)
+			cs.HashMap, errs = filelist.GenerateMap(cs.C.MapPath)
+			if len(errs) > 0 {
+				for _, err := range errs {
+					cs.L.Err("failed getting hashmap", err)
+				}
+				os.Exit(1) // crash and burn since we can't make maps
+			}
 			elapsed := time.Since(start)
 			cs.L.Simple(fmt.Sprintf("hash map generated in %v", elapsed))
 			if err != nil {

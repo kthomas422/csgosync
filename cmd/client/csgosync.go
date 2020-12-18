@@ -27,6 +27,7 @@ func main() {
 	var (
 		files models.FileHashMap
 		err   error
+		errs  []error
 	)
 	fmt.Println("csgo sync client")
 
@@ -64,7 +65,15 @@ func main() {
 
 	// Create the hash map of our files and send to server
 	fmt.Println("generating hash map...")
-	files.Files, err = filelist.GenerateMap(clientConfig.MapPath)
+	files.Files, errs = filelist.GenerateMap(clientConfig.MapPath)
+	if len(errs) > 0 {
+		for _, err := range errs {
+			fmt.Println("error creating hash map:", err)
+		}
+		config.Wait()
+		os.Exit(1)
+	}
+
 	fmt.Println("sending hashmap to server")
 	resp, err := httpclient.SendServerHashes(clientConfig.Uri+"/csgosync", clientConfig.Pass, files)
 	if err != nil {
