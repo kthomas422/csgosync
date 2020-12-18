@@ -20,14 +20,14 @@ import (
 
 	"github.com/kthomas422/csgosync/config"
 
-	"github.com/kthomas422/csgosync/internal/logging"
+	"github.com/kthomas422/csgosync/internal/csgolog"
 
 	"github.com/kthomas422/csgosync/internal/filelist"
 	"github.com/kthomas422/csgosync/internal/models"
 )
 
 type CsgoSync struct {
-	L       *logging.Log
+	L       *csgolog.CsgoLogger
 	C       *config.ServerConfig
 	LogFile io.WriteCloser
 	HashMap map[string]string
@@ -42,11 +42,10 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp        models.FileResponse
 		ip          = GetRequestIp(r)
 	)
-
-	cs.L.Debug("header: ", r.Header)
+	cs.L.WebRequest(r)
 	if pass := r.Header.Get("Pass"); pass != "" {
 		if pass != cs.C.Pass {
-			cs.L.Info(fmt.Sprintf("ip: %v | unauthorized: bad pass: %s", ip, r.Header.Get("Pass")))
+			cs.L.Simple(fmt.Sprintf("unauthorized: bad pass: %s", r.Header.Get("Pass")))
 			err = unAuth(w)
 			if err != nil {
 				cs.L.Err("failed to write back to client: ", err)
@@ -54,7 +53,7 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		cs.L.Info(fmt.Sprintf("ip: %v | unauthorized: no password", ip))
+		cs.L.Simple("unauthorized: no password")
 		err = unAuth(w)
 		if err != nil {
 			cs.L.Err("failed to write back to client: ", err)
@@ -69,7 +68,6 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	switch r.Method { // switch to make it easier to add more methods later
 	case http.MethodPost:
-		cs.L.Info("request from: ", ip)
 		bytes, err = ioutil.ReadAll(r.Body)
 		if err != nil {
 			cs.L.Err("failed to read request body: ", err)
@@ -108,14 +106,14 @@ func (cs *CsgoSync) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			cs.L.Err("failed to write back to client: ", err)
 		}
 	default:
-		cs.L.Info(fmt.Sprintf("ip: %v | hit non-existent endpoint: %s", ip, r.URL.String()))
+		cs.L.Simple(fmt.Sprintf("non-existent endpoint: %s", r.URL.String()))
 		w.WriteHeader(http.StatusNotFound)
 		_, err = w.Write([]byte("{ \"Message\": \"Not found\"}"))
 		if err != nil {
 			log.Println(err)
 		}
 	}
-	cs.L.Info(fmt.Sprintf("ip: %v | successfully sent map delta (%d)", ip, len(resp.Files)))
+	cs.L.Simple(fmt.Sprintf("ip: %v successfully sent map delta (%d)", ip, len(resp.Files)))
 }
 
 func unAuth(w http.ResponseWriter) (err error) {

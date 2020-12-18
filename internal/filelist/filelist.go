@@ -83,8 +83,7 @@ func hashFiles(files []string) (hashes []string, err error) {
 					}
 					hasher.Write(buf)
 				}
-				err = f.Close()
-				if err != nil {
+				if err = f.Close(); err != nil {
 					fmt.Println("error closing file: ", err)
 				}
 				mux.Lock()

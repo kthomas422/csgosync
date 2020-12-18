@@ -4,6 +4,3 @@ PORT: "8080"
 
 # valid options are "stderr" "stdout" or a path to a file
 LOG_FILE: "csgosyncd.log"
-
-# Uncomment for more verbose output
-#LOG_LEVEL: "debug"

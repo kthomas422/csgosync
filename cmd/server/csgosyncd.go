@@ -17,9 +17,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/kthomas422/csgosync/internal/filelist"
+	"github.com/kthomas422/csgosync/internal/csgolog"
 
-	"github.com/kthomas422/csgosync/internal/logging"
+	"github.com/kthomas422/csgosync/internal/filelist"
 
 	"github.com/kthomas422/csgosync/config"
 
@@ -38,54 +38,51 @@ func main() {
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 	if err != nil {
-		cs.L.Err("failed to get config file: ", err)
-		os.Exit(1)
+		log.Fatal("failed to get config file: ", err)
 	}
 	cs.C = config.InitServerConfig()
 
 	// init logger
-	cs.LogFile, err = logging.OpenLogFile(cs.C.LogFile)
+	cs.L, err = csgolog.InitLogger(cs.C.LogFile)
 	if err != nil {
-		cs.LogFile = os.Stderr
+		log.Fatalf("could not start logger: %v\n", err)
 	}
-	cs.L = logging.Init(cs.C.LogLvl, cs.LogFile)
-	cs.L.Info("Map Sync Server")
+	cs.L.Simple("CSGO Sync Server!")
+
 	defer func() {
-		if cs.LogFile != os.Stdout || cs.LogFile != os.Stderr {
-			if err := cs.LogFile.Close(); err != nil {
-				log.Println("failed to close log file: ", err)
-			}
+		if err := cs.L.Close(); err != nil {
+			log.Printf("error closing log file: %v\n", err)
 		}
 	}()
 
 	if cs.C.Pass == "" {
-		err = cs.C.GetPass()
-		if err != nil {
-			cs.L.Err("failed to get password: ", err)
-			os.Exit(1)
-		}
+		cs.L.Err("failed to get password: ", err)
+		os.Exit(1)
 	}
 	if cs.C.Port == "" {
-		cs.L.Info("empty port number, defaulting to 8080")
+		cs.L.Simple("empty port number, defaulting to 8080")
 		cs.C.Port = "8080"
 	}
 
+	if err := cs.L.Config(*cs.C); err != nil {
+		log.Fatalf("could not write to logger: %v", err)
+	}
+
 	go func() {
-		cs.L.Info("generating hash map")
-		start := time.Now()
-		cs.HashMap, err = filelist.GenerateMap(cs.C.MapPath)
-		elapsed := time.Since(start)
-		cs.L.Info(fmt.Sprintf("hash map generated in %v", elapsed))
+		for {
+			cs.L.Simple("generating hash map")
+			start := time.Now()
+			cs.HashMap, err = filelist.GenerateMap(cs.C.MapPath)
+			elapsed := time.Since(start)
+			cs.L.Simple(fmt.Sprintf("hash map generated in %v", elapsed))
 
-		cs.L.Debug(fmt.Sprintf("files list: %#v", cs.HashMap))
-		if err != nil {
-			cs.L.Err("couldn't load server maps: ", err)
-			return
+			cs.L.Simple(fmt.Sprintf("files list: %v", cs.HashMap))
+			if err != nil {
+				cs.L.Err("couldn't load server maps: ", err)
+			}
+			time.Sleep(time.Hour * 24 * 7) // regenerate hash map every week TODO: set this as config
 		}
-		time.Sleep(time.Hour * 24 * 7) // regenerate hash map every week
 	}()
-
-	cs.L.Debug(fmt.Sprintf("server config: %#v", cs.C))
 
 	// Handler for serving map files
 	// TODO add auth to file server
@@ -97,17 +94,14 @@ func main() {
 
 	// Catchall handler
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		ip := httpserver.GetRequestIp(r)
-		cs.L.Info(fmt.Sprintf("ip: %v | hit non-existent endpoint: %s", ip, r.URL.String()))
+		cs.L.WebRequest(r)
 		w.WriteHeader(http.StatusNotFound)
 		_, err = w.Write([]byte("{ \"Message\": \"Not found\"}"))
 		if err != nil {
 			cs.L.Err("failed to write back to client: ", err)
 		}
-
 	})
 
-	cs.L.Info("Serving on port ", cs.C.Port)
 	s := http.Server{
 		ReadTimeout:       time.Second * 10,
 		ReadHeaderTimeout: time.Second * 10,
@@ -115,9 +109,6 @@ func main() {
 		IdleTimeout:       time.Second * 30,
 		Addr:              ":" + cs.C.Port,
 	}
-	cs.L.Debug(fmt.Sprintf("ReadTimeout: %d", s.ReadTimeout))
-	cs.L.Debug(fmt.Sprintf("ReadHeaderTimeout: %d", s.ReadHeaderTimeout))
-	cs.L.Debug(fmt.Sprintf("WriteTimeout: %d", s.WriteTimeout))
-	cs.L.Debug(fmt.Sprintf("IdleTimeout: %d", s.IdleTimeout))
-	cs.L.Err(s.ListenAndServe())
+
+	cs.L.Err("server shutdown response:", s.ListenAndServe())
 }

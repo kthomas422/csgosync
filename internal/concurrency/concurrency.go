@@ -5,7 +5,7 @@
 	Language:	Go 1.14
 	Dev Env:	Linux 5.7
 
-	This file contains concurrency overhead stucts and methods for the csgo sync application.
+	This file contains concurrency overhead structs and methods for the csgo sync application.
 */
 
 package concurrency
